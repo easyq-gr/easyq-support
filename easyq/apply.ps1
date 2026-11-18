@@ -83,6 +83,27 @@ $ctext = [regex]::Replace($ctext, $cmWait, 'for _ in 0..100 {$1sleep(0.3).await;
 [IO.File]::WriteAllText($conn, $ctext, (New-Object Text.UTF8Encoding($false)))
 'EasyQ: src/server/connection.rs waits up to 30 s for the connection manager'
 
+# Our own wording where RustDesk's is wrong for us, from easyq/texts.json (key -> language -> text), into
+# src/lang/<language>.rs. desk_tip: RustDesk says "with this ID and password", and there is no password here.
+# The JSON file keeps the Greek text out of this script (Windows PowerShell 5.1 reads a .ps1 without BOM as ANSI).
+$utf8 = New-Object Text.UTF8Encoding($false)
+$texts = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'texts.json'), $utf8) | ConvertFrom-Json
+foreach ($key in $texts.PSObject.Properties.Name) {
+    foreach ($lang in $texts.$key.PSObject.Properties.Name) {
+        $lf = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../src/lang/$lang.rs"))
+        if (-not (Test-Path $lf)) { throw "EasyQ: no language file src/lang/$lang.rs" }
+        $lt = [IO.File]::ReadAllText($lf, $utf8)
+        $pat = '\("' + [regex]::Escape($key) + '", "(?:[^"\\]|\\.)*"\)'
+        $n = ([regex]::Matches($lt, $pat)).Count
+        if ($n -ne 1) { throw "EasyQ: expected key $key once in src/lang/$lang.rs, found it $n times" }
+        $val = ([string]$texts.$key.$lang).Replace('\', '\\').Replace('"', '\"')
+        $newEntry = '("' + $key + '", "' + $val + '")'
+        $lt = [regex]::Replace($lt, $pat, { param($m) $newEntry })
+        [IO.File]::WriteAllText($lf, $lt, $utf8)
+        "EasyQ: src/lang/$lang.rs $key <- texts.json"
+    }
+}
+
 # EasyQ icons instead of RustDesk's. Every target must already exist (a moved file in a new RustDesk version stops the
 # build), and icon.ico + icon.svg are required: a build never ships with RustDesk's icon by accident.
 #   icon.ico       -> res/icon.ico (DLL resource), flutter/windows/runner/resources/app_icon.ico (exe, taskbar)

@@ -28,6 +28,8 @@ instead of RustDesk's (`res/icon.ico`, `res/tray-icon.ico`, `flutter/windows/run
 | No API server (`register-device = N`) | The client never calls RustDesk's admin server |
 | No update check, no LAN discovery | Nothing besides the session itself |
 | EasyQ icons and logo | The customer sees at once that it comes from EasyQ |
+| The customer's window text (`desk_tip` in `src/lang/el.rs` and `en.rs`, from [`easyq/texts.json`](easyq/texts.json)) | RustDesk's text speaks of a password that does not exist here |
+| Waits up to 30 s instead of 6 s for the "Accept" window (`src/server/connection.rs`) | A slow first start (antivirus, slow PC) made every first connection fail |
 
 Everything else is RustDesk, unchanged.
 
