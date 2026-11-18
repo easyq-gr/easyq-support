@@ -70,6 +70,19 @@ Swap 'pub static ref BUILTIN_SETTINGS: RwLock<HashMap<String, String>> = Default
 [IO.File]::WriteAllText($file, $text, (New-Object Text.UTF8Encoding($false)))
 "EasyQ: config.rs changed for '$appName' (conn-type $connType; server, key, preset settings)"
 
+# On every incoming connection the client starts its "connection manager" window (the "Accept" dialog, a second
+# process) and waits for it only 20 x 0.3 s. A slow first start (antivirus on a new download, a slow PC) took 14 s in
+# the test of 18/11 and every attempt failed with "Reset by the peer" until the window was already running. Wait up to
+# 100 x 0.3 s = 30 s instead. Regex with \r?\n: the checkout may have CRLF or LF line ends.
+$conn = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../src/server/connection.rs'))
+$ctext = [IO.File]::ReadAllText($conn)
+$cmWait = 'for _ in 0\.\.20 \{(\r?\n\s*)sleep\(0\.3\)\.await;(\r?\n\s*)if let Ok\(s\) = crate::ipc::connect\(1000, "_cm"\)\.await \{'
+$n = ([regex]::Matches($ctext, $cmWait)).Count
+if ($n -ne 1) { throw "EasyQ: expected the connection manager wait once in $conn, found it $n times" }
+$ctext = [regex]::Replace($ctext, $cmWait, 'for _ in 0..100 {$1sleep(0.3).await;$2if let Ok(s) = crate::ipc::connect(1000, "_cm").await {')
+[IO.File]::WriteAllText($conn, $ctext, (New-Object Text.UTF8Encoding($false)))
+'EasyQ: src/server/connection.rs waits up to 30 s for the connection manager'
+
 # EasyQ icons instead of RustDesk's. Every target must already exist (a moved file in a new RustDesk version stops the
 # build), and icon.ico + icon.svg are required: a build never ships with RustDesk's icon by accident.
 #   icon.ico       -> res/icon.ico (DLL resource), flutter/windows/runner/resources/app_icon.ico (exe, taskbar)
