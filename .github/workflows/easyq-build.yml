@@ -1,5 +1,6 @@
-# EasyQ Support (EASYQ.md): RustDesk for Windows x64 with the changes of easyq/apply.ps1, unsigned.
-# Made by make_easyq_workflow.js from RustDesk's flutter-build.yml of the same version: on a new RustDesk version,
+# EasyQ Support (EASYQ.md): RustDesk for Windows x64 with the changes of easyq/apply.ps1, unsigned, in two variants:
+# customer ("EasyQ Support") and tech ("EasyQ Support Tech").
+# Made by easyq/make-workflow.js from RustDesk's flutter-build.yml of the same version: on a new RustDesk version,
 # take the new flutter-build.yml and make this file again, never edit it by hand.
 name: EasyQ Support build (Windows x64)
 
@@ -57,7 +58,7 @@ jobs:
       target_version: Windows10
 
   build-easyq-support-windows:
-    name: ${{ matrix.job.target }}
+    name: ${{ matrix.job.target }} (${{ matrix.variant }})
     needs: [build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: ${{ matrix.job.os }}
     strategy:
@@ -74,6 +75,7 @@ jobs:
               vcpkg-triplet: x64-windows-static,
               build-args: "--vram",
             }
+        variant: [customer, tech]
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -89,7 +91,7 @@ jobs:
 
       - name: Apply the EasyQ Support changes (easyq/apply.ps1)
         shell: pwsh
-        run: ./easyq/apply.ps1
+        run: ./easyq/apply.ps1 -Variant ${{ matrix.variant }}
 
       - name: Restore bridge files
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -294,5 +296,5 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: easyq-support-unsigned-windows-${{ matrix.job.arch }}
+          name: easyq-support-${{ matrix.variant }}-unsigned-windows-${{ matrix.job.arch }}
           path: rustdesk
